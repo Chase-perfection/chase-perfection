@@ -14,6 +14,6 @@
 
 <br>
 
-<sub>Mis a jour automatiquement chaque jour · derniere execution visible dans l'onglet <b>Actions</b></sub>
+<sub>Mis a jour automatiquement chaque jour</sub>
 
 </div>
