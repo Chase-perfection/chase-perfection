@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="256" viewBox="0 0 720 256" font-family="ui-monospace, 'SF Mono', 'DejaVu Sans Mono', Consolas, monospace" font-size="14">
+<style>
+  .row { opacity:0; animation: appear .5s ease forwards; }
+  @keyframes appear {
+    from { opacity:0; transform: translateX(10px); }
+    to   { opacity:1; transform: translateX(0);    }
+  }
+  .k { fill:#39d353; font-weight:600; }
+  .v { fill:#c9d1d9; }
+  .logo { fill:#58a6ff; white-space:pre; }
+</style>
+<rect x="1" y="1" width="718" height="254" rx="10" fill="#0d1117" stroke="#30363d" stroke-width="1.5"/>
+<rect x="1" y="1" width="718" height="34" rx="10" fill="#161b22"/>
+<rect x="1" y="20" width="718" height="15" fill="#161b22"/>
+<circle cx="22" cy="18" r="6" fill="#ff5f56"/>
+<circle cx="42" cy="18" r="6" fill="#ffbd2e"/>
+<circle cx="62" cy="18" r="6" fill="#27c93f"/>
+<text x="360.0" y="23" text-anchor="middle" fill="#8b949e" font-size="13">Chase-perfection@profile: ~</text>
+<text class="row logo" x="20" y="82" xml:space="preserve" style="animation-delay:0.00s">   __</text>
+<text class="row logo" x="20" y="104" xml:space="preserve" style="animation-delay:0.08s">  /  \___</text>
+<text class="row logo" x="20" y="126" xml:space="preserve" style="animation-delay:0.16s"> /       \</text>
+<text class="row logo" x="20" y="148" xml:space="preserve" style="animation-delay:0.24s"> \  o  o  /</text>
+<text class="row logo" x="20" y="170" xml:space="preserve" style="animation-delay:0.32s">  \  __  /</text>
+<text class="row logo" x="20" y="192" xml:space="preserve" style="animation-delay:0.40s">   \____/</text>
+<g class="row" style="animation-delay:0.00s"><text x="200" y="82"><tspan class="k">Chase-perfection</tspan><tspan class="v">@</tspan><tspan fill="#58a6ff">profile</tspan></text></g>
+<g class="row" style="animation-delay:0.12s"><text x="200" y="104"><tspan class="v">——————————————————————</tspan></text></g>
+<g class="row" style="animation-delay:0.24s"><text x="200" y="126"><tspan class="k">role</tspan><tspan class="v">: Consultant en cybersécurité et automatisation des processus</tspan></text></g>
+<g class="row" style="animation-delay:0.36s"><text x="200" y="148"><tspan class="k">Compétence</tspan><tspan class="v">: Concevoir et déployer des solutions d&#x27;automatisation pour les équipes IT et cybersécurité, en intégrant des technologies d&#x27;intelligence artificielle afin d&#x27;optimiser les processus, renforcer la sécurité du système d&#x27;information et réduire les tâches répétitives.</tspan></text></g>
+<g class="row" style="animation-delay:0.48s"><text x="200" y="170"><tspan class="k">editor</tspan><tspan class="v">: VS Code / Antigravity / Manus / Claude</tspan></text></g>
+<g class="row" style="animation-delay:0.60s"><text x="200" y="192"><tspan class="k">os</tspan><tspan class="v">: Linux  ·  Windows</tspan></text></g>
+<g class="row" style="animation-delay:0.72s"><text x="200" y="214"><tspan class="k">focus</tspan><tspan class="v">: AI builder  ·  Open source</tspan></text></g>
+<g class="row" style="animation-delay:0.84s"><text x="200" y="236"><tspan class="k">uptime</tspan><tspan class="v">: coding since 2020</tspan></text></g>
+</svg>
