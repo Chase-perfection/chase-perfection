@@ -51,11 +51,44 @@ LOGO_X     = PAD
 INFO_X     = 200
 TOP        = 60          # espace pour la barre de titre
 FONT       = "ui-monospace, 'SF Mono', 'DejaVu Sans Mono', Consolas, monospace"
+CHAR_W     = 8.4         # largeur approx. d'un caractere en monospace 14px
+width      = 720
+
+
+def wrap(text, max_chars):
+    """Coupe 'text' en lignes d'au plus 'max_chars' caracteres, sur les espaces."""
+    words = text.split()
+    lines, cur = [], ""
+    for w in words:
+        if not cur:
+            cur = w
+        elif len(cur) + 1 + len(w) <= max_chars:
+            cur += " " + w
+        else:
+            lines.append(cur)
+            cur = w
+    if cur:
+        lines.append(cur)
+    return lines or [""]
+
+
+# Pre-calcule les lignes rendues pour chaque info (avec retour a la ligne des
+# valeurs trop longues) afin de dimensionner correctement la carte.
+# Chaque valeur commence a une colonne alignee juste apres "cle: ".
+info_rows = []   # liste de (value_x, [ (label|None, chunk) ... ]) une entree par ligne rendue
+for k, v in INFO:
+    prefix_len = len(k) + 2                      # "cle: "
+    value_x = INFO_X + prefix_len * CHAR_W
+    max_chars = max(8, int((width - value_x - PAD) / CHAR_W))
+    chunks = wrap(v, max_chars)
+    for j, chunk in enumerate(chunks):
+        info_rows.append((value_x, k if j == 0 else None, chunk))
 
 logo_lines = [l for l in LOGO.splitlines() if l.strip("\n")]
-n_rows = max(len(logo_lines), len(INFO) + 2)   # +2 : ligne "user@profile" + separateur
+# +2 : ligne "user@profile" + separateur, puis toutes les lignes d'info (avec wrap)
+n_info_lines = 2 + len(info_rows)
+n_rows = max(len(logo_lines), n_info_lines)
 height = TOP + n_rows * LINE_H + PAD
-width  = 720
 
 parts = []
 parts.append(
@@ -112,13 +145,20 @@ parts.append(row(y0, 0.0,
 parts.append(row(y0 + LINE_H, 0.12,
     f'<tspan class="v">{"—" * 22}</tspan>'))
 
-# Lignes d'info
-for i, (k, v) in enumerate(INFO):
+# Lignes d'info (valeurs longues coupees sur plusieurs lignes)
+for i, (value_x, label, chunk) in enumerate(info_rows):
     y = y0 + (i + 2) * LINE_H
     delay = 0.24 + i * 0.12
-    parts.append(row(y, delay,
-        f'<tspan class="k">{escape(k)}</tspan>'
-        f'<tspan class="v">: {escape(v)}</tspan>'))
+    if label is not None:
+        # Premiere ligne d'une info : "cle: valeur..."
+        parts.append(row(y, delay,
+            f'<tspan class="k">{escape(label)}</tspan>'
+            f'<tspan class="v">: {escape(chunk)}</tspan>'))
+    else:
+        # Suite d'une valeur : alignee sous le debut de la valeur.
+        parts.append(
+            f'<g class="row" style="animation-delay:{delay:.2f}s">'
+            f'<text x="{value_x:.0f}" y="{y}"><tspan class="v">{escape(chunk)}</tspan></text></g>')
 
 parts.append('</svg>')
 
