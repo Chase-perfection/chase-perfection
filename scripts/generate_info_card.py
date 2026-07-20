@@ -2,17 +2,26 @@
 """
 Genere info-card.svg : un panneau facon "neofetch" qui se devoile ligne par ligne.
 
-=> EDITE UNIQUEMENT LE BLOC 'CONFIG' CI-DESSOUS avec tes infos.
-Aucune donnee reseau : cette carte est statique (elle ne change que si tu la modifies).
+Le logo a gauche est ton VRAI avatar GitHub, converti en ASCII couleur.
+  - Si Pillow est installe et l'avatar accessible : rendu de l'avatar.
+  - Sinon : repli sur le petit logo ASCII statique (LOGO ci-dessous).
+
+=> EDITE LE BLOC 'CONFIG' CI-DESSOUS avec tes infos.
+
+Variable d'environnement optionnelle :
+  GH_LOGIN : ton pseudo GitHub (defaut : Chase-perfection)
 """
 
+import os
+import io
+import urllib.request
 from html import escape
 
 # ============================ CONFIG (a personnaliser) ============================
-USER   = "Chase-perfection"          # affiche dans l'en-tete : user@profile
+USER   = os.environ.get("GH_LOGIN", "Chase-perfection")   # en-tete + avatar
 TITLE  = "~"                          # ce qui suit les ":" dans la barre de titre
 
-# Logo ASCII a gauche (garde des lignes de meme largeur pour un rendu propre)
+# Logo ASCII de secours (utilise seulement si l'avatar ne peut pas etre charge).
 LOGO = r"""
    __
   /  \___
@@ -21,6 +30,58 @@ LOGO = r"""
   \  __  /
    \____/
 """
+
+# --- Avatar -> ASCII couleur ---
+AV_COLS = 24                 # largeur en caracteres
+AV_CW   = 6.6                # avance d'un caractere (px) a la taille AV_FS
+AV_CH   = 11                 # hauteur d'une ligne (px)
+AV_FS   = 11                 # taille de police du logo
+AV_RAMP = "@%#*+=-:. "       # du plus dense (sombre) au plus clair (vide)
+
+
+def _avatar_image(login):
+    """Telecharge l'avatar GitHub et le pose sur fond blanc. Renvoie une image RGB."""
+    from PIL import Image
+    urls = [
+        f"https://avatars.githubusercontent.com/{login}",
+        f"https://github.com/{login}.png",
+    ]
+    raw = None
+    for url in urls:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": login})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                raw = r.read()
+            break
+        except Exception:
+            continue
+    if raw is None:
+        raise RuntimeError("avatar introuvable")
+    im = Image.open(io.BytesIO(raw)).convert("RGBA")
+    bg = Image.new("RGBA", im.size, (255, 255, 255, 255))
+    return Image.alpha_composite(bg, im).convert("RGB")
+
+
+def avatar_cells(login):
+    """Renvoie une grille [ligne][col] de (caractere, couleur_hex ou None)."""
+    im = _avatar_image(login)
+    rows = max(1, round(AV_COLS * AV_CW / AV_CH))
+    small = im.resize((AV_COLS, rows))
+    grid = []
+    for y in range(rows):
+        line = []
+        for x in range(AV_COLS):
+            r, g, b = small.getpixel((x, y))
+            lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+            ch = AV_RAMP[min(len(AV_RAMP) - 1, int(lum * len(AV_RAMP)))]
+            if ch == " ":
+                line.append((" ", None))
+            else:
+                # Rehausse un peu la luminosite pour rester lisible sur fond sombre.
+                br = lambda c: min(255, int(c * 0.8 + 55))
+                line.append((ch, f"#{br(r):02x}{br(g):02x}{br(b):02x}"))
+        grid.append(line)
+    return grid
 
 # Lignes d'info a droite : (etiquette, valeur). L'ordre = l'ordre d'apparition.
 INFO = [
@@ -84,11 +145,21 @@ for k, v in INFO:
     for j, chunk in enumerate(chunks):
         info_rows.append((value_x, k if j == 0 else None, chunk))
 
+# Essaie de construire l'avatar en ASCII couleur ; repli sur le logo statique.
+avatar = None
+try:
+    avatar = avatar_cells(USER)
+    print(f"Avatar ASCII genere pour {USER} ({len(avatar)} lignes).")
+except Exception as e:
+    print(f"Avatar indisponible ({e}) -> logo ASCII de secours.")
+
 logo_lines = [l for l in LOGO.splitlines() if l.strip("\n")]
+
 # +2 : ligne "user@profile" + separateur, puis toutes les lignes d'info (avec wrap)
 n_info_lines = 2 + len(info_rows)
-n_rows = max(len(logo_lines), n_info_lines)
-height = TOP + n_rows * LINE_H + PAD
+info_h = n_info_lines * LINE_H
+logo_h = len(avatar) * AV_CH if avatar else len(logo_lines) * LINE_H
+height = TOP + max(info_h, logo_h) + PAD
 
 parts = []
 parts.append(
@@ -123,14 +194,31 @@ parts.append(
     f'{escape(USER)}@profile: {escape(TITLE)}</text>'
 )
 
-# Logo (gauche)
-for i, line in enumerate(logo_lines):
-    y = TOP + (i + 1) * LINE_H
-    delay = i * 0.08
-    parts.append(
-        f'<text class="row logo" x="{LOGO_X}" y="{y}" xml:space="preserve" '
-        f'style="animation-delay:{delay:.2f}s">{escape(line)}</text>'
-    )
+# Logo (gauche) : avatar ASCII couleur, ou logo statique en repli.
+if avatar:
+    av_top = TOP + LINE_H          # aligne le haut de l'avatar avec l'info
+    for r, line in enumerate(avatar):
+        y = av_top + r * AV_CH
+        delay = r * 0.05
+        spans = []
+        for c, (ch, color) in enumerate(line):
+            if ch == " ":
+                continue
+            x = LOGO_X + c * AV_CW
+            spans.append(f'<tspan x="{x:.1f}" y="{y:.1f}" fill="{color}">{escape(ch)}</tspan>')
+        if spans:
+            parts.append(
+                f'<text class="row" font-size="{AV_FS}" xml:space="preserve" '
+                f'style="animation-delay:{delay:.2f}s">{"".join(spans)}</text>'
+            )
+else:
+    for i, line in enumerate(logo_lines):
+        y = TOP + (i + 1) * LINE_H
+        delay = i * 0.08
+        parts.append(
+            f'<text class="row logo" x="{LOGO_X}" y="{y}" xml:space="preserve" '
+            f'style="animation-delay:{delay:.2f}s">{escape(line)}</text>'
+        )
 
 # En-tete "user@profile" + ligne de separation (droite)
 def row(y, delay, content):

@@ -15,6 +15,7 @@ Variables d'environnement :
 
 import os
 import json
+import datetime
 import urllib.request
 
 LOGIN = os.environ.get("GH_LOGIN", "Chase-perfection")
@@ -41,25 +42,8 @@ TILE_H = 82
 COLS   = 3
 
 
-def fetch_stats(login, token):
-    query = """
-    query($login: String!) {
-      user(login: $login) {
-        followers { totalCount }
-        following { totalCount }
-        repositories(first: 100, ownerAffiliations: OWNER, isFork: false) {
-          totalCount
-          nodes { stargazerCount }
-        }
-        pullRequests { totalCount }
-        issues { totalCount }
-        contributionsCollection {
-          totalCommitContributions
-          restrictedContributionsCount
-        }
-      }
-    }"""
-    payload = json.dumps({"query": query, "variables": {"login": login}}).encode()
+def _graphql(query, variables, token, login):
+    payload = json.dumps({"query": query, "variables": variables}).encode()
     req = urllib.request.Request(
         "https://api.github.com/graphql",
         data=payload,
@@ -73,14 +57,57 @@ def fetch_stats(login, token):
         data = json.load(r)
     if "errors" in data:
         raise RuntimeError(data["errors"])
-    u = data["data"]["user"]
+    return data["data"]
+
+
+def fetch_stats(login, token):
+    # 1) Donnees de base + annee de creation du compte.
+    base_q = """
+    query($login: String!) {
+      user(login: $login) {
+        createdAt
+        followers { totalCount }
+        repositories(first: 100, ownerAffiliations: OWNER, isFork: false) {
+          totalCount
+          nodes { stargazerCount }
+        }
+        pullRequests { totalCount }
+        issues { totalCount }
+      }
+    }"""
+    u = _graphql(base_q, {"login": login}, token, login)["user"]
     stars = sum(n["stargazerCount"] for n in u["repositories"]["nodes"])
-    cc = u["contributionsCollection"]
+    start_year = int(u["createdAt"][:4])
+
+    # 2) Total des commits sur TOUTES les annees (contributionsCollection est
+    #    limite a 1 an, donc on interroge annee par annee et on additionne).
+    #    'restrictedContributionsCount' ajoute les contributions privees
+    #    (visibles seulement avec un token qui y a acces, ex. GH_PAT).
+    year_q = """
+    query($login: String!, $from: DateTime!, $to: DateTime!) {
+      user(login: $login) {
+        contributionsCollection(from: $from, to: $to) {
+          totalCommitContributions
+          restrictedContributionsCount
+        }
+      }
+    }"""
+    this_year = datetime.datetime.now(datetime.timezone.utc).year
+    commits = 0
+    for year in range(start_year, this_year + 1):
+        variables = {
+            "login": login,
+            "from": f"{year}-01-01T00:00:00Z",
+            "to":   f"{year}-12-31T23:59:59Z",
+        }
+        cc = _graphql(year_q, variables, token, login)["user"]["contributionsCollection"]
+        commits += cc["totalCommitContributions"] + cc["restrictedContributionsCount"]
+
     return {
         "repos":     u["repositories"]["totalCount"],
         "stars":     stars,
         "followers": u["followers"]["totalCount"],
-        "commits":   cc["totalCommitContributions"] + cc["restrictedContributionsCount"],
+        "commits":   commits,
         "prs":       u["pullRequests"]["totalCount"],
         "issues":    u["issues"]["totalCount"],
     }
@@ -102,7 +129,7 @@ TILES = [
     ("repos",     "dépôts",        CYAN),
     ("stars",     "étoiles",       YELLOW),
     ("followers", "abonnés",       ACCENT),
-    ("commits",   "commits (an)",  ACCENT),
+    ("commits",   "commits",       ACCENT),
     ("prs",       "pull requests", CYAN),
     ("issues",    "issues",        YELLOW),
 ]

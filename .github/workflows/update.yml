@@ -20,10 +20,15 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Installer les dependances
+        run: pip install --quiet Pillow
+
       - name: Generer la banniere terminal
         run: python scripts/generate_banner.py
 
-      - name: Generer la carte neofetch
+      - name: Generer la carte neofetch (avatar en ASCII)
+        env:
+          GH_LOGIN: ${{ github.repository_owner }}
         run: python scripts/generate_info_card.py
 
       # Les etapes suivantes utilisent l'API GitHub.
